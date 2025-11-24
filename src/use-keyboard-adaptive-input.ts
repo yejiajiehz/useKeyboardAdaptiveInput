@@ -23,13 +23,15 @@ export interface KeyboardAdaptiveInputOptions {
   /** 键盘覆盖模式下的默认键盘高度 */
   defaultAndroidKeyboardHeight?: number;
   /** focus 后等待键盘动画完成的延迟(ms) */
-  focusWaitMs?: number;
+  keyboardExpandTime?: number;
   /** 滚动后校验的延迟(ms) */
-  scrollRecheckMs?: number;
+  inputScrollTime?: number;
   /** blur 清理操作的延迟(ms) */
-  blurCleanupMs?: number;
+  keyboardCollapseTime?: number;
   /** 输入框底部预留的安全距离(px) */
   safePadding?: number;
+  /** 滚动容器 */
+  keyboardPaddingContainer?: HTMLElement;
 }
 
 /**
@@ -45,10 +47,11 @@ export function useKeyboardAdaptiveInput(
   const config = {
     defaultAndroidKeyboardHeight:
       options.defaultAndroidKeyboardHeight ?? DEFAULT_ANDROID_KEYBOARD_HEIGHT,
-    focusWaitMs: options.focusWaitMs ?? DEFAULT_FOCUS_WAIT_MS,
-    scrollRecheckMs: options.scrollRecheckMs ?? DEFAULT_SCROLL_RECHECK_MS,
-    blurCleanupMs: options.blurCleanupMs ?? DEFAULT_BLUR_CLEANUP_MS,
+    keyboardExpandTime: options.keyboardExpandTime ?? DEFAULT_FOCUS_WAIT_MS,
+    inputScrollTime: options.inputScrollTime ?? DEFAULT_SCROLL_RECHECK_MS,
+    keyboardCollapseTime: options.keyboardCollapseTime ?? DEFAULT_BLUR_CLEANUP_MS,
     safePadding: options.safePadding ?? DEFAULT_SAFE_PADDING,
+    keyboardPaddingContainer: options.keyboardPaddingContainer,
   };
 
   // 初始页面的高度
@@ -121,7 +124,6 @@ export function useKeyboardAdaptiveInput(
       // TODO: 考虑从一个输入框到另外一个输入框的场景
       const heightChanged = baseline - afterHeight > 20;
       if (heightChanged) {
-        console.log('页面高度变化，无须滚动', baseline, afterHeight)
         return;
       }
 
@@ -138,7 +140,6 @@ export function useKeyboardAdaptiveInput(
       if (!hasScroll) {
         lastKnownHeightRef.current = vh;
         isAdaptingRef.current = false;
-        console.log('页面元素可见，无须滚动')
         return;
       }
 
@@ -146,8 +147,6 @@ export function useKeyboardAdaptiveInput(
       safeSetTimeout(() => {
         if (!document.body.contains(el)) {
           isAdaptingRef.current = false;
-        console.log('页面滚动之后，元素可见')
-
           return;
         }
 
@@ -167,7 +166,7 @@ export function useKeyboardAdaptiveInput(
         }
 
         // 滚动失败，在页面底部添加间距
-        ensureSpacer(keyboardHeight);
+        ensureSpacer(keyboardHeight, config.keyboardPaddingContainer);
 
         // 重新滚动
         smartScrollToMakeVisible(
@@ -175,15 +174,13 @@ export function useKeyboardAdaptiveInput(
           currentVh - keyboardHeight,
           config.safePadding
         );
-        console.log('页面底部添加间距，重新滚动')
 
-
-        // 再次更新最终高度，使用固定的短延迟
+        // 再次更新最终高度
         safeSetTimeout(() => {
           lastKnownHeightRef.current = getViewportHeight();
           isAdaptingRef.current = false;
         }, 50); // 使用固定的50ms延迟进行最终确认
-      }, config.scrollRecheckMs);
+      }, config.inputScrollTime);
     },
     [safeSetTimeout, config]
   );
@@ -212,7 +209,10 @@ export function useKeyboardAdaptiveInput(
         }
       };
 
-      window.visualViewport.addEventListener("resize", onVV, { once: true, passive: true });
+      window.visualViewport.addEventListener("resize", onVV, {
+        once: true,
+        passive: true,
+      });
 
       cleanupRef.current = () => {
         window.visualViewport?.removeEventListener("resize", onVV);
@@ -223,7 +223,7 @@ export function useKeyboardAdaptiveInput(
         if (document.body.contains(el)) {
           handleKeyboardAdaptation(el, baseline, getViewportHeight());
         }
-      }, config.focusWaitMs);
+      }, config.keyboardExpandTime);
     } else {
       const onWin = () => {
         if (document.body.contains(el)) {
@@ -241,7 +241,7 @@ export function useKeyboardAdaptiveInput(
         if (document.body.contains(el)) {
           handleKeyboardAdaptation(el, baseline, getViewportHeight());
         }
-      }, config.focusWaitMs);
+      }, config.keyboardExpandTime);
     }
   }, [handleKeyboardAdaptation, cleanupAll, safeSetTimeout, config]);
 
@@ -250,14 +250,14 @@ export function useKeyboardAdaptiveInput(
 
     // blur清理使用配置中的延迟时间
     safeSetTimeout(() => {
-      removeSpacer();
+      removeSpacer(config.keyboardPaddingContainer);
       preFocusHeightRef.current = null;
       // 保留lastKnownHeightRef，这样在快速聚焦时可以更快响应
       // 仅在blur后较长时间没有再次focus时才更新
       safeSetTimeout(() => {
         lastKnownHeightRef.current = getViewportHeight();
       }, 500); // 500ms内没有再次focus才更新
-    }, config.blurCleanupMs);
+    }, config.keyboardCollapseTime);
   }, [cleanupAll, safeSetTimeout, config]);
 
   useEffect(() => {
@@ -275,7 +275,7 @@ export function useKeyboardAdaptiveInput(
       elRef.current = null;
       uninstall();
       cleanupAll();
-      removeSpacer();
+      removeSpacer(config.keyboardPaddingContainer);
     };
   }, [inputRef, onPointerStart, onFocus, onBlur, cleanupAll]);
 }

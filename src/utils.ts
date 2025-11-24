@@ -16,20 +16,20 @@ export function getRect(el: HTMLElement): DOMRect {
 }
 
 const DATA_KEY = "use-keyboard-origin-padding-bottom_" + Date.now();
-// 在 body 插入 padding，用于撑起页面高度
-export function ensureSpacer(keyboardHeight: number) {
-  const style = getComputedStyle(document.body);
+// 在滚动容器底部插入 padding，用于撑起页面高度
+export function ensureSpacer(keyboardHeight: number, container = document.body) {
+  const style = getComputedStyle(container);
   const originalPaddingBottom = parseFloat(style.paddingBottom);
-  document.body.style.paddingBottom =
+  container.style.paddingBottom =
     originalPaddingBottom + keyboardHeight + "px";
-  document.body.dataset[DATA_KEY] = style.paddingBottom;
+  container.dataset[DATA_KEY] = style.paddingBottom;
 }
 
-export function removeSpacer() {
-  const originalPaddingBottom = document.body.dataset[DATA_KEY];
+export function removeSpacer(container = document.body) {
+  const originalPaddingBottom = container.dataset[DATA_KEY];
   if (originalPaddingBottom) {
-    document.body.style.paddingBottom = originalPaddingBottom;
-    delete document.body.dataset[DATA_KEY];
+    container.style.paddingBottom = originalPaddingBottom;
+    delete container.dataset[DATA_KEY];
   }
 }
 

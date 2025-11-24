@@ -16,7 +16,7 @@
 1.2 如果可见，end
 2. 如果页面高度无变化，假设键盘高度为 300px；判断输入框是否被遮挡在页面底部 300px 的位置
 2.1 如果是，尝试滚动到输入框可见位置
-2.1.1 如果无法滚动；在body 底部添加 300px 的空白节点，再尝试滚动
+2.1.1 如果无法滚动；在 body 底部（或者配置的滚动容器）添加 300px 的空白节点，再尝试滚动
 2.2 如果不是，不处理 end
 
 添加防抖等逻辑，避免快速聚焦失焦导致的重复滚动
@@ -50,12 +50,13 @@ flowchart TD
 
  ### 选项
 
-| 配置项                       | 说明                                   | 默认值 |
+| 配置项                        | 说明                                   | 默认值 |
 | ---------------------------- | -------------------------------------- | ------ |
-| defaultAndroidKeyboardHeight | 默认键盘高度                           | 300    |
-| safePadding                  | 底部安全距离                           | 16     |
-| focusWaitMs                  | 聚焦之后，判断输入框是否可见的延迟时间 | 150    |
-| scrollRecheckMs              | 尝似滚动后，再校验的延迟               | 100    |
-| blurCleanupMs                | 失焦之后，清理底部占位元素的延迟时间   | 100    |
+| defaultAndroidKeyboardHeight | 默认键盘高度                             | 300    |
+| safePadding                  | 底部安全距离                             | 16     |
+| keyboardExpandTime           | 聚焦之后，判断输入框是否可见的延迟时间        | 150    |
+| inputScrollTime              | 尝试滚动后，重新校验可见的延迟               | 100    |
+| keyboardCollapseTime         | 失焦之后，清理底部占位元素的延迟时间          | 100    |
+| keyboardPaddingContainer     | 底部添加 padding 用于撑起页面高度的容器      | document.body |
 
 ## 注意事项
