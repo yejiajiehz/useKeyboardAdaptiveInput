@@ -34,6 +34,9 @@ export interface KeyboardAdaptiveInputOptions {
   keyboardPaddingContainer?: HTMLElement;
 }
 
+// 键盘状态类型
+type KeyboardState = 'idle' | 'expanding' | 'collapsing';
+
 /**
  * Hook：自动处理 H5 输入框被键盘遮挡的问题（iOS & Android 通用）
  * @param inputRef 输入元素的引用
@@ -66,6 +69,12 @@ export function useKeyboardAdaptiveInput(
   const cleanupRef = useRef<(() => void) | null>(null);
   const timerRef = useRef<number[]>([]);
   const adaptationStartTimeRef = useRef<number>(0); // 记录适配开始时间
+
+  // 键盘状态管理
+  const keyboardStateRef = useRef<KeyboardState>('idle');
+  // 记录最后一次聚焦和失焦的时间
+  const lastFocusTimeRef = useRef<number>(0);
+  const lastBlurTimeRef = useRef<number>(0);
 
   // 清理所有定时器
   const clearAllTimers = useCallback(() => {
@@ -108,7 +117,6 @@ export function useKeyboardAdaptiveInput(
     (el: HTMLElement, baseline: number, afterHeight: number): void => {
       // 如果已经在处理中
       if (isAdaptingRef.current || !document.body.contains(el)) {
-        // TODO: 逻辑需要加强，需要保障最终可用
         return;
       }
 
@@ -121,7 +129,6 @@ export function useKeyboardAdaptiveInput(
       }
 
       // 如果页面的高度发生了变化，可以认为浏览器已经自行处理；无须额外处理
-      // TODO: 考虑从一个输入框到另外一个输入框的场景
       const heightChanged = baseline - afterHeight > 20;
       if (heightChanged) {
         return;
@@ -162,6 +169,8 @@ export function useKeyboardAdaptiveInput(
         if (!needScroll) {
           lastKnownHeightRef.current = currentVh;
           isAdaptingRef.current = false;
+          // 键盘展开完成，状态恢复为idle
+          keyboardStateRef.current = 'idle';
           return;
         }
 
@@ -179,6 +188,8 @@ export function useKeyboardAdaptiveInput(
         safeSetTimeout(() => {
           lastKnownHeightRef.current = getViewportHeight();
           isAdaptingRef.current = false;
+          // 键盘展开完成，状态恢复为idle
+          keyboardStateRef.current = 'idle';
         }, 50); // 使用固定的50ms延迟进行最终确认
       }, config.inputScrollTime);
     },
@@ -195,6 +206,28 @@ export function useKeyboardAdaptiveInput(
   const onFocus = useCallback(() => {
     const el = elRef.current;
     if (!el) return;
+
+    const now = Date.now();
+    const timeSinceLastBlur = now - lastBlurTimeRef.current;
+    const timeSinceLastFocus = now - lastFocusTimeRef.current;
+
+    // 场景1：切换输入框场景 - 如果当前在expanding状态中，快速的失去焦点，并重新聚焦<50ms
+    // 继续保持当前的focus事件，忽略失焦点事件，忽略新的聚焦事件
+    if (keyboardStateRef.current === 'expanding' && timeSinceLastFocus < 50) {
+      return;
+    }
+
+    // 场景2：频繁点击场景 - 如果当前在collapsing状态中，重新聚焦
+    // 立刻结束当前的collapse事件，触发聚焦事件
+    if (keyboardStateRef.current === 'collapsing') {
+      // 清理正在进行的collapse操作
+      clearAllTimers();
+      // 重置键盘状态
+      keyboardStateRef.current = 'idle';
+    }
+
+    lastFocusTimeRef.current = now;
+    keyboardStateRef.current = 'expanding';
 
     cleanupAll();
 
@@ -243,10 +276,22 @@ export function useKeyboardAdaptiveInput(
         }
       }, config.keyboardExpandTime);
     }
-  }, [handleKeyboardAdaptation, cleanupAll, safeSetTimeout, config]);
+  }, [handleKeyboardAdaptation, cleanupAll, safeSetTimeout, config, clearAllTimers]);
 
   const onBlur = useCallback(() => {
-    cleanupAll();
+    const now = Date.now();
+    const timeSinceLastFocus = now - lastFocusTimeRef.current;
+
+    // 场景1：如果当前在expanding状态中，快速的失去焦点<50ms，忽略失焦点事件
+    if (keyboardStateRef.current === 'expanding' && timeSinceLastFocus < 50) {
+      return;
+    }
+
+    lastBlurTimeRef.current = now;
+    keyboardStateRef.current = 'collapsing';
+
+    // 清除所有定时器，但不立即清理，因为需要等待延迟
+    clearAllTimers();
 
     // blur清理使用配置中的延迟时间
     safeSetTimeout(() => {
@@ -256,9 +301,11 @@ export function useKeyboardAdaptiveInput(
       // 仅在blur后较长时间没有再次focus时才更新
       safeSetTimeout(() => {
         lastKnownHeightRef.current = getViewportHeight();
+        // 键盘收起完成，状态恢复为idle
+        keyboardStateRef.current = 'idle';
       }, 500); // 500ms内没有再次focus才更新
     }, config.keyboardCollapseTime);
-  }, [cleanupAll, safeSetTimeout, config]);
+  }, [clearAllTimers, safeSetTimeout, config]);
 
   useEffect(() => {
     const el = inputRef.current;
@@ -276,6 +323,8 @@ export function useKeyboardAdaptiveInput(
       uninstall();
       cleanupAll();
       removeSpacer(config.keyboardPaddingContainer);
+      // 重置键盘状态
+      keyboardStateRef.current = 'idle';
     };
   }, [inputRef, onPointerStart, onFocus, onBlur, cleanupAll]);
 }
