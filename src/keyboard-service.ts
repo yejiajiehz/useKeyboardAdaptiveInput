@@ -106,21 +106,17 @@ export class KeyboardService {
   onFocus(el: HTMLElement) {
     if (!el || !document.body.contains(el) || !this.needAdaptation) return;
 
-    const now = Date.now();
-    const timeSinceLastFocus = now - this.lastFocusTime;
-
-    // 场景1：切换输入框场景 - 如果当前在 expanding 状态中，快速的失去焦点，并重新聚焦<50ms
-    if (this.keyboardState === "expanding" && timeSinceLastFocus < 50) {
+    if (this.keyboardState === "expanding" || this.keyboardState === "expanded") {
       return;
     }
 
-    // 场景2：频繁点击场景 - 如果当前在 collapsing 状态中，重新聚焦
+    // 如果当前在 collapsing 状态中，重新聚焦
     if (this.keyboardState === "collapsing") {
       // 清理正在进行的 collapse 操作
       this.queueManager.dispose();
     }
 
-    this.lastFocusTime = now;
+    this.lastFocusTime = Date.now();
     this.keyboardState = "expanding";
     this.cleanup();
 
