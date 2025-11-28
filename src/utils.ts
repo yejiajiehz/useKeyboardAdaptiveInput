@@ -1,5 +1,3 @@
-import { DEFAULT_SAFE_INPUT_PADDING } from "./constant";
-
 /** 获取当前视口高度（优先 visualViewport，更准确） */
 export function getViewportHeight(): number {
   if (
@@ -56,7 +54,7 @@ function findScrollableParent(el: HTMLElement): HTMLElement | Window {
 export function checkElNeedScroll(
   el: HTMLElement,
   allowedBottom: number,
-  padding = DEFAULT_SAFE_INPUT_PADDING
+  padding = 0
 ) {
   const rect = getRect(el);
   const offset = allowedBottom - padding - rect.bottom;
@@ -68,7 +66,7 @@ export function checkElNeedScroll(
 export function smartScrollToMakeVisible(
   el: HTMLElement,
   allowedBottom: number,
-  padding = DEFAULT_SAFE_INPUT_PADDING
+  padding = 0
 ): boolean {
   const needScroll = checkElNeedScroll(el, allowedBottom, padding);
 
@@ -80,6 +78,18 @@ export function smartScrollToMakeVisible(
   return needScroll;
 }
 
+function debounce(fn: (...args: any[]) => void, delay: number) {
+  let timer: number | null = null;
+  return (...args: any[]) => {
+    if (timer) {
+      clearTimeout(timer);
+    }
+    timer = setTimeout(() => {
+      fn(...args);
+    }, delay);
+  };
+}
+
 /**
  * 设置键盘展开时的视口事件监听
  * 处理 visualViewport 和 window resize 事件的兼容性
@@ -87,19 +97,17 @@ export function smartScrollToMakeVisible(
 export function setupKeyboardResizeListener(
   el: HTMLElement,
   baseline: number,
-  adaptationStartTime: number,
   onAdaptation: (el: HTMLElement, baseline: number, height: number) => void
 ): () => void {
   let cleanupFn: () => void;
 
   if (window.visualViewport) {
-    const onVisualViewportResize = () => {
+    const onVisualViewportResize = debounce(() => {
       // 检查是否是快速连续触发的情况
-      const adaptationDuration = Date.now() - adaptationStartTime;
-      if (adaptationDuration > 500 && document.body.contains(el)) {
+      if (document.body.contains(el)) {
         onAdaptation(el, baseline, window.visualViewport!.height);
       }
-    };
+    }, 100);
 
     window.visualViewport.addEventListener('resize', onVisualViewportResize, {
       once: true,

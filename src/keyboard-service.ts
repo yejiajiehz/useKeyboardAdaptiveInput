@@ -75,9 +75,6 @@ export class KeyboardService {
   // 键盘状态
   private keyboardState: KeyboardState = "idle";
 
-  // 上一次聚焦事件时间戳，用于处理快速切换输入框场景
-  private lastFocusTime: number = 0;
-
   // 基准高度
   private baseline = getViewportHeight();
 
@@ -116,7 +113,6 @@ export class KeyboardService {
       this.queueManager.dispose();
     }
 
-    this.lastFocusTime = Date.now();
     this.keyboardState = "expanding";
     this.cleanup();
 
@@ -151,7 +147,6 @@ export class KeyboardService {
     const cleanupResizeEvent = setupKeyboardResizeListener(
       el,
       baseline,
-      this.lastFocusTime,
       (targetEl, targetBaseline, height) => {
         this.canTriggerResizeEvent = true;
         this.handleKeyboardAdaptation(targetEl, targetBaseline, height);
