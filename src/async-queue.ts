@@ -8,7 +8,7 @@ export class AsyncQueueManager {
   /**
    * 设置安全的定时器
    */
-  setTimeout(callback: () => void, delay: number): void {
+  add(callback: () => void, delay: number) {
     const id = setTimeout(() => {
       // 从数组中移除已执行的定时器ID
       const index = this.timerIds.indexOf(id);
@@ -21,19 +21,12 @@ export class AsyncQueueManager {
   }
 
   /**
-   * 清除所有定时器
+   * 清理所有资源
    */
-  clearAll(): void {
+  dispose() {
     this.timerIds.forEach((timerId) => {
       clearTimeout(timerId);
     });
     this.timerIds = [];
-  }
-
-  /**
-   * 清理所有资源
-   */
-  dispose(): void {
-    this.clearAll();
   }
 }

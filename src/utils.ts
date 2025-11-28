@@ -1,4 +1,4 @@
-import { DEFAULT_SAFE_PADDING } from "./constant";
+import { DEFAULT_SAFE_INPUT_PADDING } from "./constant";
 
 /** 获取当前视口高度（优先 visualViewport，更准确） */
 export function getViewportHeight(): number {
@@ -25,6 +25,7 @@ export function ensureSpacer(keyboardHeight: number, container = document.body) 
   container.dataset[DATA_KEY] = style.paddingBottom;
 }
 
+// 移除滚动容器底部的 padding
 export function removeSpacer(container = document.body) {
   const originalPaddingBottom = container.dataset[DATA_KEY];
   if (originalPaddingBottom) {
@@ -52,23 +53,13 @@ function findScrollableParent(el: HTMLElement): HTMLElement | Window {
 }
 
 // 判断是否需要滚动
-function getElNeedScrollOffset(
-  el: HTMLElement,
-  allowedBottom: number,
-  padding = DEFAULT_SAFE_PADDING
-) {
-  const rect = getRect(el);
-  const offset = allowedBottom - padding - rect.bottom;
-
-  return offset;
-}
-
 export function checkElNeedScroll(
   el: HTMLElement,
   allowedBottom: number,
-  padding = DEFAULT_SAFE_PADDING
+  padding = DEFAULT_SAFE_INPUT_PADDING
 ) {
-  const offset = getElNeedScrollOffset(el, allowedBottom, padding);
+  const rect = getRect(el);
+  const offset = allowedBottom - padding - rect.bottom;
 
   return offset > 0;
 }
@@ -77,7 +68,7 @@ export function checkElNeedScroll(
 export function smartScrollToMakeVisible(
   el: HTMLElement,
   allowedBottom: number,
-  padding = DEFAULT_SAFE_PADDING
+  padding = DEFAULT_SAFE_INPUT_PADDING
 ): boolean {
   const needScroll = checkElNeedScroll(el, allowedBottom, padding);
 
@@ -143,28 +134,11 @@ export function calculateKeyboardAdaptationParams(
   afterHeight: number,
   estimatedKeyboardHeight: number
 ) {
-  const vh = getViewportHeight();
   const heightChanged = baseline - afterHeight > 20;
-  const allowedBottom = vh - estimatedKeyboardHeight;
+  const allowedBottom = getViewportHeight() - estimatedKeyboardHeight;
 
   return {
-    vh,
     heightChanged,
     allowedBottom
   };
-}
-
-/**
- * 执行键盘收起清理逻辑
- */
-export function performKeyboardCollapseCleanup(
-  container: HTMLElement,
-  lastKnownHeightRef: { value: number }
-) {
-  removeSpacer(container);
-
-  // 延迟更新已知高度，以便快速聚焦时能够更快响应
-  setTimeout(() => {
-    lastKnownHeightRef.value = getViewportHeight();
-  }, 500);
 }

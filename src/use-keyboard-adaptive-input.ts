@@ -10,7 +10,7 @@ import { bindEvent } from './event';
 export function useKeyboardAdaptiveInput(
   inputRef: React.RefObject<HTMLElement>,
   options: KeyboardServiceOptions = {}
-): void {
+) {
   // 使用useRef存储键盘服务实例，避免每次渲染都创建新实例
   const keyboardServiceRef = useRef<KeyboardService | null>(null);
   const elRef = useRef<HTMLElement | null>(null);
