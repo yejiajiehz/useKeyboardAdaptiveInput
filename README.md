@@ -56,11 +56,11 @@ flowchart TD
 
 | 配置项                        | 说明                                   | 默认值 |
 | ---------------------------- | -------------------------------------- | ------ |
-| defaultAndroidKeyboardHeight | 默认键盘高度                             | 300    |
-| safePadding                  | 底部安全距离                             | 16     |
-| keyboardExpandTime           | 聚焦之后，判断输入框是否可见的延迟时间        | 150    |
-| inputScrollTime              | 尝试滚动后，重新校验可见的延迟               | 100    |
-| keyboardCollapseTime         | 失焦之后，清理底部占位元素的延迟时间          | 100    |
-| keyboardPaddingContainer     | 底部添加 padding 用于撑起页面高度的容器      | document.body |
+| estimatedKeyboardHeight      | 预估的键盘高度                            | 300    |
+| safeInputPadding             | 输入框与键盘之间的安全间距                  | 16     |
+| keyboardExpandWaitTime       | 键盘展开时的等待时间                       | 150    |
+| scrollRecheckInterval        | 输入框滚动后重新检查可见性的时间间隔          | 100    |
+| keyboardCollapseCleanupTime  | 失焦之后，清理底部占位元素的延迟时间          | 100    |
+| keyboardPaddingContainer     | 用于添加键盘间距的容器元素                  | document.body |
 
 ## 注意事项

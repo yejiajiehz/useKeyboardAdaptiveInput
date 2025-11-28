@@ -68,7 +68,7 @@ export function checkElNeedScroll(
   allowedBottom: number,
   padding = DEFAULT_SAFE_PADDING
 ) {
-  const offset = getElNeedScrollOffset(el, allowedBottom, padding)
+  const offset = getElNeedScrollOffset(el, allowedBottom, padding);
 
   return offset > 0;
 }
@@ -80,13 +80,91 @@ export function smartScrollToMakeVisible(
   padding = DEFAULT_SAFE_PADDING
 ): boolean {
   const needScroll = checkElNeedScroll(el, allowedBottom, padding);
-  console.log("🚀 ~ smartScrollToMakeVisible ~ needScroll:", needScroll)
 
   if (needScroll) {
     // 滚动到元素可见位置
     el.scrollIntoView({ behavior: "smooth", inline: "end" });
   }
 
-  // TODO: 考虑使用 scroll 事件判断已经滚动完成；
   return needScroll;
+}
+
+/**
+ * 设置键盘展开时的视口事件监听
+ * 处理 visualViewport 和 window resize 事件的兼容性
+ */
+export function setupKeyboardResizeListener(
+  el: HTMLElement,
+  baseline: number,
+  adaptationStartTime: number,
+  onAdaptation: (el: HTMLElement, baseline: number, height: number) => void
+): () => void {
+  let cleanupFn: () => void;
+
+  if (window.visualViewport) {
+    const onVisualViewportResize = () => {
+      // 检查是否是快速连续触发的情况
+      const adaptationDuration = Date.now() - adaptationStartTime;
+      if (adaptationDuration > 500 && document.body.contains(el)) {
+        onAdaptation(el, baseline, window.visualViewport!.height);
+      }
+    };
+
+    window.visualViewport.addEventListener('resize', onVisualViewportResize, {
+      once: true,
+      passive: true,
+    });
+
+    cleanupFn = () => {
+      window.visualViewport?.removeEventListener('resize', onVisualViewportResize);
+    };
+  } else {
+    const onWindowResize = () => {
+      if (document.body.contains(el)) {
+        onAdaptation(el, baseline, getViewportHeight());
+      }
+    };
+
+    window.addEventListener('resize', onWindowResize, { once: true, passive: true });
+
+    cleanupFn = () => {
+      window.removeEventListener('resize', onWindowResize);
+    };
+  }
+
+  return cleanupFn;
+}
+
+/**
+ * 计算键盘适配所需的参数
+ */
+export function calculateKeyboardAdaptationParams(
+  baseline: number,
+  afterHeight: number,
+  estimatedKeyboardHeight: number
+) {
+  const vh = getViewportHeight();
+  const heightChanged = baseline - afterHeight > 20;
+  const allowedBottom = vh - estimatedKeyboardHeight;
+
+  return {
+    vh,
+    heightChanged,
+    allowedBottom
+  };
+}
+
+/**
+ * 执行键盘收起清理逻辑
+ */
+export function performKeyboardCollapseCleanup(
+  container: HTMLElement,
+  lastKnownHeightRef: { value: number }
+) {
+  removeSpacer(container);
+
+  // 延迟更新已知高度，以便快速聚焦时能够更快响应
+  setTimeout(() => {
+    lastKnownHeightRef.value = getViewportHeight();
+  }, 500);
 }
