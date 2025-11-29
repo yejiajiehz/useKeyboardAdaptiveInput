@@ -1,0 +1,5 @@
+{
+  "name": "Keyboard Adaptive Input",
+  "description": "A H5 solution for handling mobile keyboard occlusion issues by dynamically adjusting scroll and padding.",
+  "requestFramePermissions": []
+}
